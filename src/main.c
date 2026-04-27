@@ -198,8 +198,7 @@ DecodedInst cpu_decode(uint32_t inst)
 }
 
 #define RD (cpu -> regs[(inst -> rd)])
-#define WRITE_RD(val) (inst -> rd ? (val): 0)
-#define CLEAR_X0 (cpu -> regs[0] = 0)
+#define WRITE_RD(val) (RD = inst -> rd ? (val): 0)
 #define RS1 (cpu -> regs[(inst -> rs1)])
 #define RS2 (cpu -> regs[(inst -> rs2)])
 #define IMM (inst -> imm)
@@ -220,37 +219,33 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
                 case 0x00:
                     if(inst -> funct7 == 0x00)
                     {
-                        RD = RS1 + RS2;
-                        CLEAR_X0;
+                        WRITE_RD(RS1 + RS2);
                         return 0;
                     }
                     else if(inst -> funct7 == 0x20)
                     {
-                        RD = RS1 - RS2;
-                        CLEAR_X0;
+                        WRITE_RD(RS1 - RS2);
                         return 0;
                     }
                     return -1;
-                case 0x01: RD = RS1 << (RS2 & 0x1F);                   CLEAR_X0; return 0;
-                case 0x02: RD = (int32_t)RS1 < (int32_t)RS2 ? 1u : 0u; CLEAR_X0; return 0;
-                case 0x03: RD = RS1 < RS2 ? 1u: 0u;                    CLEAR_X0; return 0;
-                case 0x04: RD = RS1 ^ RS2;                             CLEAR_X0; return 0;
+                case 0x01: WRITE_RD(RS1 << (RS2 & 0x1F));                   return 0;
+                case 0x02: WRITE_RD((int32_t)RS1 < (int32_t)RS2 ? 1u : 0u); return 0;
+                case 0x03: WRITE_RD(RS1 < RS2 ? 1u: 0u);                    return 0;
+                case 0x04: WRITE_RD(RS1 ^ RS2);                             return 0;
                 case 0x05:
                     if(inst -> funct7 == 0x00)
                     {
-                        RD = RS1 >> (RS2 & 0x1F);
-                        CLEAR_X0;
+                        WRITE_RD(RS1 >> (RS2 & 0x1F));
                         return 0;
                     }
                     else if(inst -> funct7 == 0x20)
                     {
-                        RD = (int32_t)RS1 >> (RS2 & 0x1F);
-                        CLEAR_X0;
+                        WRITE_RD((int32_t)RS1 >> (RS2 & 0x1F));
                         return 0;
                     }
                     return -1;
-                case 0x06: RD = RS1 | RS2;                             CLEAR_X0; return 0;
-                case 0x07: RD = RS1 & RS2;                             CLEAR_X0; return 0;
+                case 0x06: WRITE_RD(RS1 | RS2);                             return 0;
+                case 0x07: WRITE_RD(RS1 & RS2);                             return 0;
                 default:
                     return -1;
             }
@@ -259,28 +254,25 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
         case 0x13:
             switch(inst -> funct3)
             {
-                case 0x00: RD = RS1 + IMM;                             CLEAR_X0; return 0;
-                case 0x02: RD = (int32_t)RS1 < (int32_t)IMM ? 1u : 0u; CLEAR_X0; return 0;
-                case 0x03: RD = RS1 < (uint32_t)IMM ? 1u: 0u;          CLEAR_X0; return 0;
-                case 0x04: RD = RS1 ^ IMM;                             CLEAR_X0; return 0;
-                case 0x06: RD = RS1 | IMM;                             CLEAR_X0; return 0;
-                case 0x07: RD = RS1 & IMM;                             CLEAR_X0; return 0;
+                case 0x00: WRITE_RD(RS1 + IMM);                             return 0;
+                case 0x02: WRITE_RD((int32_t)RS1 < (int32_t)IMM ? 1u : 0u); return 0;
+                case 0x03: WRITE_RD(RS1 < (uint32_t)IMM ? 1u: 0u);          return 0;
+                case 0x04: WRITE_RD(RS1 ^ IMM);                             return 0;
+                case 0x06: WRITE_RD(RS1 | IMM);                             return 0;
+                case 0x07: WRITE_RD(RS1 & IMM);                             return 0;
                 case 0x01: 
                     if(inst->funct7 != 0x00) return -1;
-                    RD = RS1 << SHAMT;   
-                    CLEAR_X0; 
+                    WRITE_RD(RS1 << SHAMT);
                     return 0;
                 case 0x05:
                     if(inst -> funct7 == 0x00)
                     {
-                        RD = RS1 >> SHAMT;
-                        CLEAR_X0;
+                        WRITE_RD(RS1 >> SHAMT);
                         return 0;
                     }
                     else if(inst -> funct7 == 0x20)
                     {
-                        RD = (int32_t)RS1 >> SHAMT;
-                        CLEAR_X0;
+                        WRITE_RD((int32_t)RS1 >> SHAMT);
                         return 0; 
                     }
                     return -1;
