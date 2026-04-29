@@ -186,11 +186,18 @@ DecodedInst cpu_decode(uint32_t inst)
     decoded.rs2 = (inst >> 20) & 0x1F;      // [24:20]
     decoded.funct7 = (inst >> 25) & 0x7F;   // [31:25]
     decoded.shamt = (inst >> 20) & 0x1F;    // [24:20]
-    // 对于 I-type 指令，立即数在 [31:20]，需要符号扩展
-    int32_t imm12 = (int32_t)(inst >> 20); // 提取立即数的高位
-    if (imm12 & 0x800)
-    {   // 如果最高位是 1，说明是负数，需要符号扩展
-        imm12 |= 0xFFFFF000; // 将高位全部设置为 1
+    
+    int32_t imm12;
+    if(decoded.opcode == 0x23)
+    {
+        imm12 = ((inst >> 25) & 0x7F) << 5;
+        imm12 |= (inst >> 7) & 0x1F;
+        if (imm12 & 0x800) imm12 |= 0xFFFFF000;
+    }
+    else
+    {
+        imm12 = (int32_t)(inst >> 20); // 提取立即数的高位
+        if (imm12 & 0x800) imm12 |= 0xFFFFF000; // 负数符号扩展
     }
     decoded.imm = imm12;
 
@@ -280,6 +287,27 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
                     return -1;
             }
             break;
+        /*Load*/
+        case 0x03:
+            switch(inst -> funct3)
+            {
+                case 0x00: WRITE_RD((int8_t)mem_read8(RS1 + IMM));           return 0;
+                case 0x01: WRITE_RD((int16_t)mem_read16(RS1 + IMM));         return 0;
+                case 0x02: WRITE_RD(mem_read32(RS1 + IMM));                  return 0;
+                case 0x04: WRITE_RD(mem_read8(RS1 + IMM));                   return 0;
+                case 0x05: WRITE_RD(mem_read16(RS1 + IMM));                  return 0;
+                default:                                                     return -1;
+            }
+            break;
+        /*Store*/
+        case 0x23:
+            switch(inst -> funct3)
+            {
+                case 0x00: mem_write8(RS1 + IMM, (uint8_t)(RS2 & 0xFF));     return 0;
+                case 0x01: mem_write16(RS1 + IMM, (uint16_t)(RS2 & 0xFFFF)); return 0;
+                case 0x02: mem_write32(RS1 + IMM, RS2);                      return 0;
+                default:                                                     return -1;
+            }
         default:
             return -1;
     }
@@ -288,6 +316,11 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
 // 暂时规定第二个参数是文件路径
 int main(int argc, char *argv[])
 {
+    if(argc < 2)
+    {
+        fprintf(stderr, "Usage: %s <binary_file>\n", argv[0]);
+        return -1;
+    }
     memory = mem_init(MEM_SIZE); // 初始化 1MB 内存
     if (memory == NULL)
     {
