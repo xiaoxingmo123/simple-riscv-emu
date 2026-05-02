@@ -187,19 +187,43 @@ DecodedInst cpu_decode(uint32_t inst)
     decoded.funct7 = (inst >> 25) & 0x7F;   // [31:25]
     decoded.shamt = (inst >> 20) & 0x1F;    // [24:20]
     
-    int32_t imm12;
-    if(decoded.opcode == 0x23)
+    int32_t imm;
+    switch(decoded.opcode)
     {
-        imm12 = ((inst >> 25) & 0x7F) << 5;
-        imm12 |= (inst >> 7) & 0x1F;
-        if (imm12 & 0x800) imm12 |= 0xFFFFF000;
+        case 0x23: // S-type: inst[31:25], inst[11:7]
+            imm = ((inst >> 25) & 0x7F) << 5;
+            imm |= (inst >> 7) & 0x1F;
+            if (imm & 0x800) imm |= 0xFFFFF000;
+            break;
+        
+        case 0x63: // B-type: inst[31], inst[7], inst[30:25], inst[11:8], bit0 = 0
+            imm = ((inst >> 31) & 1) << 12;
+            imm |= ((inst >> 7) & 1) << 11;
+            imm |= ((inst >> 25) & 0x3F) << 5;
+            imm |= ((inst >> 8) & 0xF) << 1;
+            if(imm & 0x1000) imm |= 0xFFFFE000; // 负数符号扩展
+            break;
+
+        case 0x6F: // J-type: inst[31], inst[19:12], inst[20], inst[30:21], bit0 = 0
+            imm = ((inst >> 31) & 1) << 20;
+            imm |= ((inst >> 12) & 0xFF) << 12;
+            imm |= ((inst >> 20) & 1) << 11;
+            imm |= ((inst >> 21) & 0x3FF) << 1;
+            if(imm & 0x100000) imm |= 0xFFE00000; // 负数符号扩展
+            break;
+        
+        case 0x37: // LUI
+        case 0x17: // AUIPC
+            imm = (int32_t)(inst & 0xFFFFF000); // 提取高 20 位并符号扩展
+            break;
+        
+        default: // I-type 和 R-type
+            imm = (int32_t)(inst >> 20); // 提取立即数的高位
+            if (imm & 0x800) imm |= 0xFFFFF000; // 负数符号扩展
+            break;
     }
-    else
-    {
-        imm12 = (int32_t)(inst >> 20); // 提取立即数的高位
-        if (imm12 & 0x800) imm12 |= 0xFFFFF000; // 负数符号扩展
-    }
-    decoded.imm = imm12;
+    
+    decoded.imm = imm;
 
     return decoded;
 }
@@ -296,6 +320,7 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
                 case 0x02: WRITE_RD(mem_read32(RS1 + IMM));                  return 0;
                 case 0x04: WRITE_RD(mem_read8(RS1 + IMM));                   return 0;
                 case 0x05: WRITE_RD(mem_read16(RS1 + IMM));                  return 0;
+
                 default:                                                     return -1;
             }
             break;
@@ -306,8 +331,48 @@ int cpu_execute(CPU *cpu, DecodedInst *inst)
                 case 0x00: mem_write8(RS1 + IMM, (uint8_t)(RS2 & 0xFF));     return 0;
                 case 0x01: mem_write16(RS1 + IMM, (uint16_t)(RS2 & 0xFFFF)); return 0;
                 case 0x02: mem_write32(RS1 + IMM, RS2);                      return 0;
+
                 default:                                                     return -1;
             }
+
+        /*LUI*/
+        case 0x37: WRITE_RD((uint32_t)IMM);                                  return 0;
+        
+        /*AUIPC*/
+        case 0x17: WRITE_RD(cpu -> pc + (uint32_t)IMM);                      return 0;
+
+        /*JAL*/
+        case 0x6F: WRITE_RD(cpu -> pc + 4); cpu -> pc += (uint32_t)IMM;      return 0;
+        
+        /*JARL*/
+        case 0x67:
+            if(inst -> funct3 == 0x00)
+            {
+                WRITE_RD(cpu -> pc + 4);
+                cpu -> pc = (RS1 + (uint32_t)IMM) & ~1u;
+                return 0;
+            }
+            return -1;
+        
+            /*BRANCH*/
+            case 0x63:
+                switch(inst -> funct3)
+                {
+                    case 0x00: if(RS1 == RS2) cpu -> pc += (uint32_t)IMM;                   return 0;
+                    case 0x01: if(RS1 != RS2) cpu -> pc += (uint32_t)IMM;                   return 0;
+                    case 0x04: if((int32_t)RS1 < (int32_t)RS2) cpu -> pc += (uint32_t)IMM;  return 0;
+                    case 0x05: if((int32_t)RS1 >= (int32_t)RS2) cpu -> pc += (uint32_t)IMM; return 0;
+                    case 0x06: if(RS1 < RS2) cpu -> pc += (uint32_t)IMM;                    return 0;
+                    case 0x07: if(RS1 >= RS2) cpu -> pc += (uint32_t)IMM;                   return 0;
+
+                    default:                                                                return -1;
+                }
+
+            /*SYSTEM*/
+            case 0x73:
+                // EBREAK
+                if(inst -> funct3 == 0 && inst -> imm == 1) return 1;
+                return -1;
         default:
             return -1;
     }
@@ -333,16 +398,25 @@ int main(int argc, char *argv[])
     while (cpu.pc + 4 <= loaded_bytes) {
         uint32_t raw = cpu_fetch(&cpu);
         DecodedInst dcd = cpu_decode(raw);
+        uint32_t current_pc = cpu.pc;
         
         printf("PC=%#x: opcode=%#x, rd=%d, rs1=%d, rs2=%d, funct3=%#x, funct7=%#x, imm=%d\n",
             cpu.pc, dcd.opcode, dcd.rd, dcd.rs1, dcd.rs2, dcd.funct3, dcd.funct7, dcd.imm);
         
-        if (cpu_execute(&cpu, &dcd) != 0) {
-            printf("illegl cmd at PC=%#x, raw=%#x\n", cpu.pc, raw);
-            printf("cmd: %#x\n", dcd.opcode);
+        int ret = cpu_execute(&cpu, &dcd);
+        if (ret == 1) {  /* EBREAK 正常停机 */
+            printf("EBREAK at PC=%#x, halt.\n", current_pc);
             break;
         }
-        cpu.pc += 4;
+        if (ret != 0) {
+            printf("illegal cmd at PC=%#x, raw=%#x\n", current_pc, raw);
+            break;
+        }
+        
+        /* execute 未修改 pc 时，顺序执行 */
+        if (cpu.pc == current_pc) {
+            cpu.pc += 4;
+        }
     }
     /* 执行结束后打印寄存器 */
     for (int i = 0; i < 32; i++) {
