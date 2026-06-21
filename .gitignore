@@ -1,3 +1,4 @@
 ./test/*.bin
 riscv_emu.exe
 obj/*
+riscv_emu
