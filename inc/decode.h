@@ -12,7 +12,7 @@ typedef struct{
     uint32_t rs1;        /* [19:15] */
     uint32_t rs2;        /* [24:20] */
     uint32_t funct7;     /* [31:25] */
-    int32_t  imm;        /* 符号扩展后的立即数（先实现 I-type） */
+    int32_t  imm;        /* 符号扩展后的立即数*/
     uint32_t shamt;      /* 新增：[24:20]，SLLI/SRLI/SRAI 的移位量 */
 }DecodedInst;
 

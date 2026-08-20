@@ -12,8 +12,8 @@
 /* 内存初始化，size 为字节数 */
 uint8_t* mem_init(size_t size);
 
-/* 从文件加载二进制到内存，返回加载字节数 */
-size_t mem_load(const char *filename, CPU *cpu);
+/* 从文件加载二进制到内存 */
+void mem_load(const char *filename, CPU *cpu);
 
 /* 读 8/16/32 位，小端序 */
 uint8_t mem_read8(uint32_t addr);

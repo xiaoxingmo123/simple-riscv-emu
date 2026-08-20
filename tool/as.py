@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """
 riscv_assemble.py —— 把 RISC-V 汇编文件编译成纯二进制
 
@@ -38,7 +38,7 @@ def assemble(input_file, output_file=None):
         # 1. 汇编
         run_cmd([
             f"{TOOLCHAIN_PREFIX}as",
-            "-march=rv32i", "-mabi=ilp32",
+            "-march=rv32ima_zicsr", "-mabi=ilp32",
             "-g",
             input_file, "-o", obj_file
         ], "汇编")
@@ -47,7 +47,7 @@ def assemble(input_file, output_file=None):
         run_cmd([
             f"{TOOLCHAIN_PREFIX}ld",
             "-melf32lriscv",
-            "-T", "../linker.ld",
+            "-T", "./link.ld",
             obj_file, "-o", elf_file
         ], "链接")
 

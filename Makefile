@@ -14,6 +14,11 @@ DEPENDS := $(OBJECTS:.o=.d)
 
 all: $(TARGET)
 
+debug: CFLAGS += -g -O0
+debug: clean $(TARGET)
+
+
+
 $(TARGET): $(OBJECTS)
 	$(CC) $^ -o $@ $(LDFLAGS)
 	@echo "compile succeed: $@"
@@ -36,4 +41,4 @@ clean:
 
 -include $(DEPENDS)
 
-.PHONY: all clean
+.PHONY: all debug clean
