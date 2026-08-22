@@ -25,7 +25,7 @@ typedef enum {
 // 异常原因编码
 #define MCAUSE_ECALL_M 11
 #define MCAUSE_ECALL_S 9
-#define MAUCSE_ECALL_U 8
+#define MCAUSE_ECALL_U 8
 #define MCAUSE_ILLEGAL_INST 2
 
 // CRS 地址

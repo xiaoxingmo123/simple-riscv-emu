@@ -82,7 +82,11 @@ ExecResult cpu_execute(CPU *cpu, DecodedInst *inst) {
 void cpu_trap(CPU *cpu, uint32_t cause, uint32_t tval) {
     cpu->mcause = cause;
     cpu->mtval  = tval;
-    cpu->mepc   = cpu->pc;
+    if(cause == MCAUSE_ECALL_M || cause == MCAUSE_ECALL_S || cause == MCAUSE_ECALL_U) {
+        cpu->mepc = cpu->pc + 4;
+    } else {
+        cpu->mepc = cpu->pc;
+    }
     cpu->pc     = cpu->mtvec;
 }
 
