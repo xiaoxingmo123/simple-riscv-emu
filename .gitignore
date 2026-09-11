@@ -1,4 +1,7 @@
-./test/*.bin
-riscv_emu.exe
-obj/*
+test/*.bin
+test/*.o
+test/*.elf
+template.bin
 riscv_emu
+riscv_emu.exe
+obj/
