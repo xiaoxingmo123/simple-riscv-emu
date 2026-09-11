@@ -6,6 +6,9 @@
 #include "memory.h"
 #include "elf.h"
 
+static uint64_t mtime    = 0;
+static uint64_t mtimecmp = 0xFFFFFFFFFFFFFFFFULL;
+
 void mem_load(const char *filename, CPU *cpu) {
     FILE *file = fopen(filename, "rb");
     if(file == NULL) {
@@ -50,6 +53,15 @@ uint16_t mem_read16(uint32_t addr) {
 }
 
 uint32_t mem_read32(uint32_t addr) {
+    if(addr == MTIME_ADDR) {
+        return (uint32_t)(mtime & 0xFFFFFFFF);
+    } else if(addr == MTIME_ADDR + 4) {
+        return (uint32_t)((mtime >> 32) & 0xFFFFFFFF);
+    } else if(addr == MTIMECMP_ADDR) {
+        return (uint32_t)(mtimecmp & 0xFFFFFFFF);
+    } else if(addr == MTIMECMP_ADDR + 4) {
+        return (uint32_t)((mtimecmp >> 32) & 0xFFFFFFFF);
+    }
     U32_t data = {0};
     if(addr + 3 >= MEM_SIZE) {
         fprintf(stderr, "failed to read memory for out of index\n");
@@ -87,6 +99,19 @@ void mem_write16(uint32_t addr, uint16_t value) {
 }
 
 void mem_write32(uint32_t addr, uint32_t value) {
+    if(addr == MTIME_ADDR) {
+        mtime = (mtime & 0xFFFFFFFF00000000ULL) | value;
+        return;
+    } else if(addr == MTIME_ADDR + 4) {
+        mtime = (mtime & 0x00000000FFFFFFFFULL) | ((uint64_t)value << 32);
+        return;
+    } else if(addr == MTIMECMP_ADDR) {
+        mtimecmp = (mtimecmp & 0xFFFFFFFF00000000ULL) | value;
+        return;
+    } else if(addr == MTIMECMP_ADDR + 4) {
+        mtimecmp = (mtimecmp & 0x00000000FFFFFFFFULL) | ((uint64_t)value << 32);
+        return;
+    }
     U32_t data;
     if(addr + 3 >= MEM_SIZE) {
         fprintf(stderr, "failed to write memory for out of index\n");

@@ -6,9 +6,6 @@
 
 #include "cpu.h"
 
-#define UART_TX 0x10000000 // UART 发送寄存器地址
-#define UART_RX 0x10000000 // UART 接收寄存器地址
-
 typedef union
 {
     uint8_t bytes[2];

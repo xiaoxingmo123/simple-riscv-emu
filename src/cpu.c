@@ -8,7 +8,7 @@
 
 void cpu_init(CPU *cpu, uint32_t entry) {
     memset(cpu->regs, 0, sizeof(cpu->regs)); // 初始化寄存器为 0
-    cpu->pc = entry;                             // 程序计数器初始值为 0
+    cpu->pc = entry;                         // 程序计数器初始值为 0
 }
 
 uint32_t cpu_fetch(const CPU *cpu) { return mem_read32(cpu->pc); }
@@ -79,6 +79,8 @@ ExecResult cpu_execute(CPU *cpu, DecodedInst *inst) {
     }
 }
 
+// TODO: 这里需要添加处理中断的逻辑，这样就需要考虑优先级的问题
+// 不过目前中断源比较少，暂时当作没有问题吧
 void cpu_trap(CPU *cpu, uint32_t cause, uint32_t tval) {
     cpu->mcause = cause;
     cpu->mtval  = tval;
@@ -87,7 +89,7 @@ void cpu_trap(CPU *cpu, uint32_t cause, uint32_t tval) {
     } else {
         cpu->mepc = cpu->pc;
     }
-    cpu->pc     = cpu->mtvec;
+    cpu->pc = cpu->mtvec;
 }
 
 static uint32_t read_csr(CPU *cpu, uint32_t addr) {
