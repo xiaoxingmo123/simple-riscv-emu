@@ -79,10 +79,13 @@ ExecResult cpu_execute(CPU *cpu, DecodedInst *inst) {
     }
 }
 
-// TODO: 这里需要添加处理中断的逻辑，这样就需要考虑优先级的问题
+// TODO: 这里添加了处理中断的逻辑，这样就需要考虑优先级的问题
 // 不过目前中断源比较少，暂时当作没有问题吧
-void cpu_trap(CPU *cpu, uint32_t cause, uint32_t tval) {
-    cpu->mcause = cause;
+void cpu_trap(CPU *cpu, uint32_t cause, uint32_t tval, int is_interrupt) {
+    cpu->mstatus &= ~MSTATUS_MPIE;
+    cpu->mstatus |= ((cpu->mstatus & MSTATUS_MIE) ? MSTATUS_MPIE : 0);
+    cpu->mstatus &= ~MSTATUS_MIE; /* 进入异常后关闭中断 */
+    cpu->mcause = is_interrupt ? (cause | 0x80000000) : cause;
     cpu->mtval  = tval;
     if(cause == MCAUSE_ECALL_M || cause == MCAUSE_ECALL_S || cause == MCAUSE_ECALL_U) {
         cpu->mepc = cpu->pc + 4;
@@ -289,7 +292,7 @@ static ExecResult exec_system(CPU *cpu, DecodedInst *inst) {
         uint32_t funct12 = (inst->imm & 0xFFF);
         if(funct12 == 0x000) {
             // ECALL
-            cpu_trap(cpu, MCAUSE_ECALL_M, 0);
+            cpu_trap(cpu, MCAUSE_ECALL_M, 0, 0);
             return EXEC_SUCCESS;
         } else if(funct12 == 0x001) {
             // EBREAK
@@ -297,6 +300,8 @@ static ExecResult exec_system(CPU *cpu, DecodedInst *inst) {
         } else if(funct12 == 0x302) {
             // MRET
             cpu->pc = cpu->mepc;
+            // 恢复中断使能状态
+            cpu->mstatus = (cpu->mstatus & ~MSTATUS_MIE) | ((cpu->mstatus & MSTATUS_MPIE) ? MSTATUS_MIE : 0);
             return EXEC_SUCCESS;
         } else {
             return EXEC_ILLEGAL_INST; // 未知的 SYSTEM 指令

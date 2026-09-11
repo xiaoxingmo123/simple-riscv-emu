@@ -9,8 +9,11 @@
 
 #define MEM_SIZE (1024 * 1024) // 1MB 内存
 
+extern uint64_t mtime;
+extern uint64_t mtimecmp;
+
 /* 内存初始化，size 为字节数 */
-uint8_t* mem_init(size_t size);
+uint8_t *mem_init(size_t size);
 
 /* 从文件加载二进制到内存 */
 void mem_load(const char *filename, CPU *cpu);

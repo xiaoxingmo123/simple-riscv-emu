@@ -6,8 +6,10 @@
 #include "memory.h"
 #include "elf.h"
 
-static uint64_t mtime    = 0;
-static uint64_t mtimecmp = 0xFFFFFFFFFFFFFFFFULL;
+uint64_t mtime    = 0;
+uint64_t mtimecmp = 0;
+
+// TODO: 我迟早要把这个狗屎mem拦截方式改了
 
 void mem_load(const char *filename, CPU *cpu) {
     FILE *file = fopen(filename, "rb");

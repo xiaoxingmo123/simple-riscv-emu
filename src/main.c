@@ -10,13 +10,11 @@
 #include "memory.h"
 #include "decode.h"
 
-
 uint8_t *memory;
 CPU cpu;
 
 // 暂时规定第二个参数是文件路径
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     if(argc < 2) {
         fprintf(stderr, "Usage: %s <binary_file>\n", argv[0]);
         return -1;
@@ -27,22 +25,31 @@ int main(int argc, char *argv[])
     }
     mem_load(argv[1], &cpu);
     while(1) {
-        uint32_t raw = cpu_fetch(&cpu);
-        DecodedInst dcd = decode(raw);
+        // 检查计时器
+        if((cpu.mstatus & MSTATUS_MIE) && (cpu.mie & (1 << 7)) && // MTIE
+           (mtime >= mtimecmp)) {
+            cpu.mip |= (1 << 7);
+            cpu_trap(&cpu, 7, 0, 1);  // cause = 7
+            continue;
+        }
+
+        uint32_t raw        = cpu_fetch(&cpu);
+        DecodedInst dcd     = decode(raw);
         uint32_t current_pc = cpu.pc;
-        
-        // printf("PC=%#x: opcode=%#x, rd=%d, rs1=%d, rs2=%d, funct3=%#x, funct7=%#x, imm=%d\n",
-        //     cpu.pc, dcd.opcode, dcd.rd, dcd.rs1, dcd.rs2, dcd.funct3, dcd.funct7, dcd.imm);
-        
+        //printf("PC=%#x: opcode=%#x, rd=%d, rs1=%d, rs2=%d, funct3=%#x, funct7=%#x, imm=%d\n",
+             //cpu.pc, dcd.opcode, dcd.rd, dcd.rs1, dcd.rs2, dcd.funct3, dcd.funct7, dcd.imm);
         int ret = cpu_execute(&cpu, &dcd);
-        if(ret == EXEC_EBREAK_HALT) {  /* EBREAK 正常停机 */
+
+        mtime++;  // 每条指令执行后，mtime 自增 1
+
+        if(ret == EXEC_EBREAK_HALT) { /* EBREAK 正常停机 */
             printf("EBREAK at PC=%#x, halt.\n", current_pc);
             break;
         } else if(ret == EXEC_ILLEGAL_INST) {
             printf("illegal cmd at PC=%#x, raw=%#x\n", current_pc, raw);
             break;
         }
-        
+
         /* execute 未修改 pc 时，顺序执行 */
         if(cpu.pc == current_pc) {
             cpu.pc += 4;
