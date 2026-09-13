@@ -107,6 +107,10 @@ static uint32_t read_csr(CPU *cpu, uint32_t addr) {
         return cpu->mtval;
     case CSR_MTVEC:
         return cpu->mtvec;
+    case CSR_MIE:
+        return cpu->mie;
+    case CSR_MIP:
+        return cpu->mip;
     default:
         return 0;
     }
@@ -128,6 +132,12 @@ static void write_csr(CPU *cpu, uint32_t addr, uint32_t val) {
         break;
     case CSR_MTVEC:
         cpu->mtvec = val;
+        break;
+    case CSR_MIE:
+        cpu->mie = val;
+        break;
+    case CSR_MIP:
+        cpu->mip = val;
         break;
     }
 }
@@ -325,6 +335,12 @@ static ExecResult exec_system(CPU *cpu, DecodedInst *inst) {
             break;
         case CSR_MTVEC:
             WRITE_RD(cpu->mtvec);
+            break;
+        case CSR_MIE:
+            WRITE_RD(cpu->mie);
+            break;
+        case CSR_MIP:
+            WRITE_RD(cpu->mip);
             break;
         default:
             return EXEC_ILLEGAL_INST; // 未知的 CSR 地址
