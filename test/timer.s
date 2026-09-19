@@ -5,14 +5,15 @@ _start:
     # 1. 设置 mtvec
     la   t0, trap_handler
     csrrw zero, mtvec, t0
+    li t4, 0x01
+    slli t4, t4, 29
 
-    # 2. 设置 mtimecmp = mtime + 100（100条指令后触发）
+    # 2. 设置 mtimecmp = mtime + t4
     la   t0, MTIMECMP_ADDR
     la   t1, MTIME_ADDR
-    li   t2, 1
-    slli  t2, t2, 29
-    # addi t2, t2, 1000
-    sw   t2, 0(t0)        # mtimecmp = mtime + 10000
+    lw   t2, 0(t1)
+    add t2, t2, t4
+    sw   t2, 0(t0)        # mtimecmp = mtime + t4
 
     # 3. 使能定时器中断
     li   t0, (1 << 7)     # MTIE
@@ -46,9 +47,7 @@ trap_handler:
     la    t0, MTIMECMP_ADDR
     la    t1, MTIME_ADDR
     lw    t2, 0(t1)
-    li   t2, 1
-    slli  t2, t2, 30
-    # addi t2, t2, 1000
+    add t2, t2, t4
     sw    t2, 0(t0)
 
     mret
