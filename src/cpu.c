@@ -63,8 +63,9 @@ ExecResult cpu_execute(CPU *cpu, DecodedInst *inst) {
     /*JARL*/
     case 0x67:
         if(inst->funct3 == 0x00) {
+            uint32_t target = RS1 + (uint32_t)IMM;
             WRITE_RD(cpu->pc + 4);
-            cpu->pc = (RS1 + (uint32_t)IMM) & ~1u;
+            cpu->pc = target & ~1u;
             return 0;
         }
         return -1;
