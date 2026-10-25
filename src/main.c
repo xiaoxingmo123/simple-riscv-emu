@@ -29,18 +29,18 @@ int main(int argc, char *argv[]) {
         if((cpu.mstatus & MSTATUS_MIE) && (cpu.mie & (1 << 7)) && // MTIE
            (mtime >= mtimecmp)) {
             cpu.mip |= (1 << 7);
-            cpu_trap(&cpu, 7, 0, 1);  // cause = 7
+            cpu_trap(&cpu, 7, 0, 1); // cause = 7
             continue;
         }
 
         uint32_t raw        = cpu_fetch(&cpu);
         DecodedInst dcd     = decode(raw);
         uint32_t current_pc = cpu.pc;
-        //printf("PC=%#x: opcode=%#x, rd=%d, rs1=%d, rs2=%d, funct3=%#x, funct7=%#x, imm=%d\n",
-             //cpu.pc, dcd.opcode, dcd.rd, dcd.rs1, dcd.rs2, dcd.funct3, dcd.funct7, dcd.imm);
+        // printf("PC=%#x: opcode=%#x, rd=%d, rs1=%d, rs2=%d, funct3=%#x, funct7=%#x, imm=%d\n",
+        // cpu.pc, dcd.opcode, dcd.rd, dcd.rs1, dcd.rs2, dcd.funct3, dcd.funct7, dcd.imm);
         int ret = cpu_execute(&cpu, &dcd);
 
-        mtime++;  // 每条指令执行后，mtime 自增 1
+        mtime++; // 每条指令执行后，mtime 自增 1
 
         if(ret == EXEC_EBREAK_HALT) { /* EBREAK 正常停机 */
             printf("EBREAK at PC=%#x, halt.\n", current_pc);
@@ -50,8 +50,9 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        /* execute 未修改 pc 时，顺序执行 */
-        if(cpu.pc == current_pc) {
+        /* execute 未修改 pc 且非 jar, jalr 时，顺序执行 */
+        // i hate this
+        if(cpu.pc == current_pc && dcd.opcode != 0x6F && dcd.opcode != 0x67) {
             cpu.pc += 4;
         }
     }
